@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1
+
+- macOS `install-macos.command` now prompts for an upstream API Base URL when
+  none is configured, uses it only for that launch, and then starts the proxy.
+
 ## 2.0.0
 
 ### Breaking changes
