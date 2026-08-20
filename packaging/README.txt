@@ -1,4 +1,4 @@
-Codex Reroute - standalone local retry proxy
+Steady Relay - standalone local retry proxy
 ============================================
 
 This package is self-contained. Python and Go are not required.

@@ -91,8 +91,8 @@ func main() {
 		ReadHeaderTimeout: 15 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
-	log.Printf("codex-reroute version=%s listening on http://%s -> %s", buildVersion, actualListen, cfg.upstream)
-	log.Printf("[startup] codex_base_url=http://%s/v1 health=http://%s/healthz", actualListen, actualListen)
+	log.Printf("steady-relay version=%s listening on http://%s -> %s", buildVersion, actualListen, safeUpstreamURL(cfg.upstream))
+	log.Printf("[startup] local_api_base_url=http://%s/v1 health=http://%s/healthz", actualListen, actualListen)
 	if cfg.upstreamIP != "" {
 		log.Printf("[startup] upstream_host=%s pinned_ip=%s dns_bypass=enabled", cfg.upstream.Hostname(), cfg.upstreamIP)
 		if proxyURL, proxyErr := http.ProxyFromEnvironment(&http.Request{URL: cfg.upstream}); proxyErr == nil && proxyURL != nil {
@@ -143,6 +143,21 @@ func pinnedDialAddress(address, upstreamHost, upstreamIP string) string {
 		return address
 	}
 	return net.JoinHostPort(upstreamIP, port)
+}
+
+// safeUpstreamURL returns only the non-sensitive identifying parts of an
+// upstream URL for diagnostics. It must not mutate the URL used for requests.
+func safeUpstreamURL(upstream *url.URL) string {
+	if upstream == nil {
+		return ""
+	}
+	redacted := *upstream
+	redacted.User = nil
+	redacted.RawQuery = ""
+	redacted.ForceQuery = false
+	redacted.Fragment = ""
+	redacted.RawFragment = ""
+	return redacted.String()
 }
 
 // listenWithFallback prefers the configured port and tries subsequent ports
@@ -250,7 +265,7 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
 		log.Printf("[request] id=%s %s %s -> health", requestID, r.Method, logPath)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "upstream": p.cfg.upstream.String()})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 		log.Printf("[response] id=%s %s %s status=200 duration=%s", requestID, r.Method, logPath, time.Since(startedAt).Round(time.Millisecond))
 		return
 	}
@@ -317,7 +332,7 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			lastErr = streamErr
 			if started || attempt >= p.cfg.maxRetries {
-				// Once headers/data have reached Codex, retrying would create a
+				// Once headers/data have reached the client, retrying would create a
 				// second response or duplicate generated tokens.
 				if !started {
 					p.writeUnavailable(w, lastErr)
@@ -326,7 +341,7 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if errors.Is(streamErr, errSSEPreCommitFailure) {
-				// No bytes have reached Codex. Discard the buffered SSE frames and
+				// No bytes have reached the client. Discard the buffered SSE frames and
 				// retry the identical request safely.
 				delay := p.retryDelay(attempt, "")
 				log.Printf("[retry] id=%s method=%s path=%s model=%q attempt=%d/%d sse_error_before_commit=%v wait=%s", requestID, r.Method, logPath, requestedModel, attempt+1, p.cfg.maxRetries, streamErr, delay.Round(time.Millisecond))
@@ -524,7 +539,7 @@ func (p *proxy) forwardStream(w http.ResponseWriter, resp *http.Response, attemp
 					return errSSEPreCommitFailure
 				}
 				// No retry remains. Forward the final upstream failure event exactly
-				// as received so Codex can show the real error to the user.
+				// as received so the client can show the real error to the user.
 				diagnostics.commitEvent = eventType
 				if err := commit(); err != nil {
 					return err
@@ -606,7 +621,7 @@ func sseFrameType(frame []byte) string {
 func sseEventCommitsOutput(event string) bool {
 	// These are response lifecycle/metadata events. Keep them buffered until
 	// actual output appears, so a later pre-output response.failed/error can be
-	// retried without exposing a partial failed response to Codex.
+	// retried without exposing a partial failed response to the client.
 	if event == "response.created" || event == "response.queued" || event == "response.in_progress" || event == "response.metadata" {
 		return false
 	}

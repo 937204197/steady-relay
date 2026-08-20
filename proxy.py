@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Small OpenAI-compatible HTTP reverse proxy with retries and SSE support.
 
-Only Python's standard library is used.  The proxy accepts requests on /v1/*
-and forwards them to UPSTREAM_BASE_URL (default: the Codex endpoint).
+Only Python's standard library is used. The proxy accepts requests on /v1/*
+and forwards them to the required UPSTREAM_BASE_URL.
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 
@@ -39,6 +40,22 @@ def _upstream_url(path: str) -> str:
     if base.endswith("/v1") and path.startswith("/v1/"):
         path = path[3:]
     return base + (path if path.startswith("/") else "/" + path)
+
+
+def _safe_upstream_url(value: str) -> str:
+    """Return an upstream URL safe to include in logs."""
+    try:
+        parsed = urlsplit(value)
+        host = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return "<invalid upstream URL>"
+    if not parsed.scheme or not host:
+        return "<invalid upstream URL>"
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    netloc = host if port is None else f"{host}:{port}"
+    return urlunsplit((parsed.scheme, netloc, parsed.path, "", ""))
 
 
 def _retry_delay(attempt: int, retry_after: Optional[str] = None) -> float:
@@ -74,7 +91,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path in ("/healthz", "/readyz"):
-            payload = {"status": "ok", "upstream": UPSTREAM_BASE_URL}
+            payload = {"status": "ok"}
             self._send_bytes(200, json.dumps(payload).encode(), "application/json")
             return
         self._proxy()
@@ -233,8 +250,8 @@ def main() -> None:
     actual_port = int(server.server_port)
     if actual_port != LISTEN_PORT:
         logging.info("listen address %s:%d is occupied; using %s:%d", LISTEN_HOST, LISTEN_PORT, LISTEN_HOST, actual_port)
-    logging.info("proxy listening on http://%s:%d -> %s", LISTEN_HOST, actual_port, UPSTREAM_BASE_URL)
-    logging.info("[startup] codex_base_url=http://%s:%d/v1 health=http://%s:%d/healthz", LISTEN_HOST, actual_port, LISTEN_HOST, actual_port)
+    logging.info("proxy listening on http://%s:%d -> %s", LISTEN_HOST, actual_port, _safe_upstream_url(UPSTREAM_BASE_URL))
+    logging.info("[startup] local_api_base_url=http://%s:%d/v1 health=http://%s:%d/healthz", LISTEN_HOST, actual_port, LISTEN_HOST, actual_port)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -1,4 +1,4 @@
-# Codex Reroute
+# Steady Relay
 
 一个本地运行的 OpenAI 兼容 API 重试代理。它接收发往本机 `/v1/*` 的请求，并把
 请求透明转发到你**明确配置且信任**的上游；遇到连接错误、超时或临时性
@@ -120,7 +120,7 @@ Python 备用实现不支持 `UPSTREAM_IP`；它使用系统 DNS。其 `RETRY_BA
 ## 构建发布包
 
 ```bash
-./scripts/build-release.sh 2.0.0
+./scripts/build-release.sh 2.1.0
 ```
 
 产物会写入 `dist/`。发布时请在 GitHub Release 中上传六个平台压缩包与

@@ -1,12 +1,12 @@
 #!/bin/sh
-# Build self-contained Codex Reroute archives for common desktop/server targets.
+# Build self-contained Steady Relay archives for common desktop/server targets.
 # End users do not need Go or Python; only the machine running this script needs Go.
 set -eu
 
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 VERSION=${1:-dev}
 OUTPUT_DIR=${OUTPUT_DIR:-"$PROJECT_ROOT/dist"}
-PROGRAM_NAME=codex-reroute
+PROGRAM_NAME=steady-relay
 
 if ! command -v go >/dev/null 2>&1; then
   echo "error: Go is required to build release archives" >&2
@@ -20,7 +20,7 @@ case "$VERSION" in
     ;;
 esac
 
-STAGING_DIR=$(mktemp -d "${TMPDIR:-/tmp}/codex-reroute-release.XXXXXX")
+STAGING_DIR=$(mktemp -d "${TMPDIR:-/tmp}/steady-relay-release.XXXXXX")
 cleanup() {
   rm -rf "$STAGING_DIR"
 }

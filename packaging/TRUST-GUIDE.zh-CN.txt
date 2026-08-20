@@ -1,4 +1,4 @@
-Codex Reroute 信任与首次运行指南
+Steady Relay 信任与首次运行指南
 ================================
 
 这是一个非官方开源项目，与 OpenAI 没有关联，也未获 OpenAI 认可。
@@ -22,13 +22,13 @@ Codex Reroute 信任与首次运行指南
 - 常见 64 位 Windows：windows-amd64；Windows on ARM：windows-arm64
 
 macOS：
-  shasum -a 256 codex-reroute-版本-darwin-arm64.tar.gz
+  shasum -a 256 steady-relay-版本-darwin-arm64.tar.gz
 
 Windows PowerShell：
-  Get-FileHash .\codex-reroute-版本-windows-amd64.zip -Algorithm SHA256
+  Get-FileHash .\steady-relay-版本-windows-amd64.zip -Algorithm SHA256
 
 Linux：
-  sha256sum codex-reroute-版本-linux-amd64.tar.gz
+  sha256sum steady-relay-版本-linux-amd64.tar.gz
 
 输出必须与同一 GitHub Release 提供的 SHA256SUMS 一致。哈希一致只能证明文件与
 发布者上传的文件相同，不能替代对仓库维护者和发布渠道的信任。

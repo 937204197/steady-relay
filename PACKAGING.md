@@ -6,7 +6,7 @@
 go test ./...
 go vet ./...
 python3 -m unittest -v
-./scripts/build-release.sh 2.0.0
+./scripts/build-release.sh 2.1.0
 ```
 
 脚本会在 `dist/` 生成 macOS、Linux、Windows 的 amd64/arm64 六个压缩包，以及

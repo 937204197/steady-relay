@@ -32,6 +32,20 @@ class HelpersTest(unittest.TestCase):
         finally:
             proxy.UPSTREAM_BASE_URL = old
 
+    def test_safe_upstream_url_redacts_sensitive_components(self):
+        value = "https://user:password@example.test:8443/v1?api_key=secret#fragment"
+        self.assertEqual(proxy._safe_upstream_url(value), "https://example.test:8443/v1")
+
+    def test_health_response_does_not_expose_upstream_url(self):
+        handler = object.__new__(proxy.ProxyHandler)
+        handler.path = "/healthz"
+        handler._send_bytes = MagicMock()
+        handler.do_GET()
+        status, data, content_type = handler._send_bytes.call_args.args
+        self.assertEqual(status, 200)
+        self.assertEqual(content_type, "application/json")
+        self.assertEqual(json.loads(data), {"status": "ok"})
+
     def test_retry_after_is_respected(self):
         self.assertEqual(proxy._retry_delay(0, "2"), 2.0)
 

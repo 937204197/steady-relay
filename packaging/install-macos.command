@@ -3,7 +3,7 @@ set -eu
 
 PACKAGE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
-echo "Codex Reroute macOS first-run helper"
+echo "Steady Relay macOS first-run helper"
 echo "Package: $PACKAGE_DIR"
 echo
 echo "This removes Apple's download quarantine flag from this package only."
@@ -13,7 +13,7 @@ read answer
 case "$answer" in
   y|Y|yes|YES)
     xattr -dr com.apple.quarantine "$PACKAGE_DIR"
-    chmod +x "$PACKAGE_DIR/codex-reroute" "$PACKAGE_DIR/start.sh" "$PACKAGE_DIR/install-macos.command"
+    chmod +x "$PACKAGE_DIR/steady-relay" "$PACKAGE_DIR/start.sh" "$PACKAGE_DIR/install-macos.command"
     echo
     echo "Quarantine removed."
 
@@ -37,7 +37,7 @@ case "$answer" in
       export UPSTREAM_BASE_URL
     fi
 
-    echo "Starting Codex Reroute..."
+    echo "Starting Steady Relay..."
     exec "$PACKAGE_DIR/start.sh" "$@"
     ;;
   *)

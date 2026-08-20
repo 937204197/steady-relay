@@ -15,6 +15,10 @@ __pycache__/
 .env.*
 !.env.example
 *.local
+*.log
+*.pem
+*.key
+credentials.json
 
 # Generated release artifacts
 dist/

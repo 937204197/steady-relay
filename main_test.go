@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -46,6 +47,20 @@ func TestPinnedDialAddressIsStrictAndPreservesPort(t *testing.T) {
 				t.Fatalf("got %q, want %q", got, test.want)
 			}
 		})
+	}
+}
+
+func TestSafeUpstreamURLRedactsSensitiveComponents(t *testing.T) {
+	upstream, err := url.Parse("https://user:password@example.test:8443/v1%2Frelay?api_key=secret#fragment")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := upstream.String()
+	if got, want := safeUpstreamURL(upstream), "https://example.test:8443/v1%2Frelay"; got != want {
+		t.Fatalf("safe URL=%q, want %q", got, want)
+	}
+	if got := upstream.String(); got != original {
+		t.Fatalf("safe logging mutated upstream: got %q, want %q", got, original)
 	}
 }
 
@@ -388,6 +403,31 @@ func TestHealthAndPathGuard(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != 404 {
 		t.Fatalf("path guard returned %d", resp.StatusCode)
+	}
+}
+
+func TestHealthEndpointsDoNotExposeUpstreamURL(t *testing.T) {
+	upstream, err := url.Parse("https://user:password@example.test/v1?api_key=secret#fragment")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(&proxy{cfg: config{upstream: upstream}})
+	defer server.Close()
+
+	for _, path := range []string{"/healthz", "/readyz"} {
+		resp, err := http.Get(server.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var payload map[string]string
+		decodeErr := json.NewDecoder(resp.Body).Decode(&payload)
+		resp.Body.Close()
+		if decodeErr != nil {
+			t.Fatalf("%s response was not JSON: %v", path, decodeErr)
+		}
+		if resp.StatusCode != http.StatusOK || len(payload) != 1 || payload["status"] != "ok" {
+			t.Fatalf("%s response: status=%d body=%v", path, resp.StatusCode, payload)
+		}
 	}
 }
 

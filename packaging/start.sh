@@ -8,4 +8,4 @@ if [ -z "${UPSTREAM_BASE_URL:-}" ] && [ "$#" -eq 0 ]; then
   echo "Or pass: ./start.sh --upstream https://api.example.com/v1" >&2
   exit 2
 fi
-exec "$PACKAGE_DIR/codex-reroute" "$@"
+exec "$PACKAGE_DIR/steady-relay" "$@"

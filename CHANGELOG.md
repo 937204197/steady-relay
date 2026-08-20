@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0
+
+- Renamed the project and release binary to Steady Relay (`steady-relay`).
+
 ## 2.0.1
 
 - macOS `install-macos.command` now prompts for an upstream API Base URL when
