@@ -131,7 +131,8 @@ Python 备用实现不支持 `UPSTREAM_IP`；它使用系统 DNS。其 `RETRY_BA
 当前二进制尚未代码签名。请只从可信 GitHub Release 下载，并先验证 SHA-256。
 
 - macOS：确认来源后，可右键打开 `install-macos.command`；它只清除当前解压目录的
-  quarantine 标记，不会关闭 Gatekeeper。
+  quarantine 标记，不会关闭 Gatekeeper。若尚未配置上游，它会在终端询问 API Base URL，
+  仅用于本次启动且不会保存。
 - Windows：确认 SHA-256 和来源后，在 SmartScreen 中选择“更多信息”→“仍要运行”。
   不要关闭 Defender、SmartScreen 或防火墙。
 

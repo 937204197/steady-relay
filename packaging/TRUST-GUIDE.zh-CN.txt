@@ -60,7 +60,9 @@ macOS 首次运行
 
 发布包未签名或未公证时，先验证来源和 SHA-256。然后可在解压目录中按住 Control 点击
 install-macos.command，选择“打开”。它只会清除当前解压目录的 quarantine 标记，不会
-关闭 Gatekeeper 或修改系统全局安全设置。
+关闭 Gatekeeper 或修改系统全局安全设置。若尚未设置 `UPSTREAM_BASE_URL`，它会提示你输入
+自己的 API Base URL（通常以 `/v1` 结尾）；该地址仅用于这一次启动，不会保存到文件或
+系统设置中。
 
 Windows 首次运行
 ----------------

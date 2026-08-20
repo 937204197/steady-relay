@@ -18,6 +18,12 @@ Windows Command Prompt:
 macOS / Linux:
   UPSTREAM_BASE_URL=https://api.example.com/v1 ./start.sh
 
+macOS first run:
+  After verifying the archive, Control-click install-macos.command and choose
+  Open. It removes quarantine from this extracted package only. If no upstream
+  is configured, it prompts for an API Base URL for this launch and does not
+  save it.
+
 Or pass the setting directly:
   ./start.sh --upstream https://api.example.com/v1
   start.bat --upstream https://api.example.com/v1
