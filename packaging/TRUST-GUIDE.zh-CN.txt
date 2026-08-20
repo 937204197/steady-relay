@@ -1,0 +1,79 @@
+Codex Reroute 信任与首次运行指南
+================================
+
+这是一个非官方开源项目，与 OpenAI 没有关联，也未获 OpenAI 认可。
+
+运行前的重要安全说明
+--------------------
+
+- 本程序不会提供或默认配置任何上游服务。你必须自行填写可信、且有权使用的
+  OpenAI 兼容 API 地址。
+- API Key、请求内容和响应内容会被转发到你设置的上游。不要填写不信任的地址。
+- 默认仅监听 127.0.0.1；请不要改成 0.0.0.0，否则同一网络的其他设备可能访问
+  这个没有本地鉴权的代理。
+- 正常日志不会打印 API Key、完整请求体或完整响应体。
+
+信任前先校验文件
+------------------
+
+请只从项目的 GitHub Releases 下载压缩包和 SHA256SUMS，并选择正确架构：
+
+- Apple 芯片：darwin-arm64；Intel Mac：darwin-amd64
+- 常见 64 位 Windows：windows-amd64；Windows on ARM：windows-arm64
+
+macOS：
+  shasum -a 256 codex-reroute-版本-darwin-arm64.tar.gz
+
+Windows PowerShell：
+  Get-FileHash .\codex-reroute-版本-windows-amd64.zip -Algorithm SHA256
+
+Linux：
+  sha256sum codex-reroute-版本-linux-amd64.tar.gz
+
+输出必须与同一 GitHub Release 提供的 SHA256SUMS 一致。哈希一致只能证明文件与
+发布者上传的文件相同，不能替代对仓库维护者和发布渠道的信任。
+
+配置并启动
+------------
+
+先准备你自己的上游地址（通常应以 /v1 结尾）。
+
+Windows 命令提示符：
+  set UPSTREAM_BASE_URL=https://api.example.com/v1
+  start.bat
+
+macOS / Linux：
+  UPSTREAM_BASE_URL=https://api.example.com/v1 ./start.sh
+
+也可改用参数：
+  start.bat --upstream https://api.example.com/v1
+  ./start.sh --upstream https://api.example.com/v1
+
+启动后，在客户端中设置 API Base URL：
+  http://127.0.0.1:8080/v1
+
+必须保留 /v1。如果设置为 http://127.0.0.1:8080，客户端会发送 /responses，代理会
+按设计返回 404。若 8080 已被占用，日志会显示最终端口，请使用相应的 /v1 地址。
+
+macOS 首次运行
+--------------
+
+发布包未签名或未公证时，先验证来源和 SHA-256。然后可在解压目录中按住 Control 点击
+install-macos.command，选择“打开”。它只会清除当前解压目录的 quarantine 标记，不会
+关闭 Gatekeeper 或修改系统全局安全设置。
+
+Windows 首次运行
+----------------
+
+完整解压 ZIP 后运行 start.bat，不要直接在 ZIP 预览中启动 EXE。若 SmartScreen 警告，
+先确认来源和 SHA-256，再选择“更多信息”→“仍要运行”。不要关闭 Defender、SmartScreen
+或防火墙。
+
+可选固定 IP
+------------
+
+当公司 VPN 或 DNS 错误解析你的上游域名时，可显式增加：
+  --upstream-ip 203.0.113.10
+
+程序仍使用原域名进行 HTTP Host、TLS SNI 和证书验证；不会关闭 HTTPS 验证。若设置了
+HTTPS_PROXY，固定 IP 可能不会生效，请遵守组织网络政策。

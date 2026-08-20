@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Format check
+        run: test -z "$(gofmt -l main.go main_test.go)"
+      - name: Go tests
+        run: go test ./...
+      - name: Go vet
+        run: go vet ./...
+      - name: Python tests
+        run: python3 -m unittest -v

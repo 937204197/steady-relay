@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a reproducible proxy bug. Do not include API keys or private prompts.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remove API keys, Authorization headers, private prompts, and sensitive
+        response content before submitting. For security issues, use the private
+        reporting process described in SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Example: 2.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [Windows amd64, Windows arm64, macOS Intel, macOS Apple Silicon, Linux amd64, Linux arm64, Source]
+    validations:
+      required: true
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Sanitised configuration
+      description: Include flags and non-sensitive settings. Replace hosts or IDs if needed.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitised logs and expected behavior
+      description: Do not include API keys, Authorization headers, prompts, or private outputs.
+    validations:
+      required: true
