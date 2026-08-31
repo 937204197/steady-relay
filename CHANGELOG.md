@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1
+
+- Documented the model-capacity and temporary upstream failure use case, including
+  searchable error names such as `model_capacity` and `server_is_overloaded`.
+
 ## 2.1.0
 
 - Renamed the project and release binary to Steady Relay (`steady-relay`).
