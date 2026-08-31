@@ -6,6 +6,23 @@
 
 > 非官方项目，与 OpenAI 没有关联，也未获 OpenAI 认可。
 
+## 这个项目解决什么问题？
+
+第三方模型平台在渠道繁忙、账号额度用尽或服务容量不足时，可能返回
+`model_capacity`、`server_is_overloaded`、`server_unavailable`、
+`usage_limit_reached` 等错误。有些客户端会把这类错误直接视为本次任务失败，
+不会在错误发生后继续重新发起请求，导致 Codex 任务中断。
+
+Steady Relay 放在客户端和模型平台之间，先接收客户端请求，再透明转发到你配置的
+上游。当上游在尚未产生实际文本、输出项或工具调用时返回上述临时性错误，代理会在
+错误交给客户端前按退避策略自动重试；默认最多重试 10 次（首次请求加起来最多 11
+次）。因此，搜索或遇到 `model_capacity`、`server_is_overloaded`、
+`server_unavailable`、`usage_limit_reached`、`429`、`503` 等错误时，可以尝试在
+客户端前增加 Steady Relay，并将客户端的 API Base URL 指向本地代理。
+
+代理不会改写请求体或响应体。若上游已经向客户端发送了实际输出，代理不会重放该
+请求，以避免重复文本、重复工具调用或重复执行。
+
 ## 安全边界与兼容性
 
 - 本项目不会提供或默认使用任何第三方上游。你必须自行设置 `UPSTREAM_BASE_URL`。

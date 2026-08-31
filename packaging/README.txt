@@ -8,6 +8,21 @@ Before starting, choose a trusted OpenAI-compatible upstream API. This proxy
 forwards your API key and request content to that upstream. No upstream is
 configured by default.
 
+What problem does this solve?
+-----------------------------
+
+Third-party model platforms may return model_capacity, server_is_overloaded,
+server_unavailable, usage_limit_reached, HTTP 429, or HTTP 503 when a channel,
+account, or model has no available capacity. Some clients treat that response
+as a final task failure instead of trying the request again, which can stop a
+Codex task mid-run.
+
+Steady Relay retries these temporary failures before sending an error to the
+client, as long as the upstream has not sent actual text, output items, or
+tool calls. The default is up to 10 retries after the initial request (11
+attempts total), with exponential backoff. If output has already started, the
+request is not replayed, preventing duplicate text or tool calls.
+
 Quick start
 -----------
 
