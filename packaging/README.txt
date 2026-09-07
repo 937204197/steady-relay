@@ -19,9 +19,12 @@ Codex task mid-run.
 
 Steady Relay retries these temporary failures before sending an error to the
 client, as long as the upstream has not sent actual text, output items, or
-tool calls. The default is up to 10 retries after the initial request (11
-attempts total), with exponential backoff. If output has already started, the
-request is not replayed, preventing duplicate text or tool calls.
+tool calls. Some newer upstreams send a keepalive/heartbeat SSE event before
+reporting capacity; those heartbeat events are not treated as model output and
+remain eligible for a safe retry. The default is up to 10 retries after the
+initial request (11 attempts total), with exponential backoff. If output has
+already started, the request is not replayed, preventing duplicate text or
+tool calls.
 
 Quick start
 -----------
