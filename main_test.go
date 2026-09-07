@@ -700,6 +700,55 @@ func TestSSEMetadataBeforeCapacityFailureRetries(t *testing.T) {
 	}
 }
 
+func TestSSEKeepaliveBeforeCapacityFailureRetries(t *testing.T) {
+	var attempts atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		if attempts.Add(1) == 1 {
+			// Newer upstreams emit a keepalive frame before reporting that the
+			// selected model is at capacity. The keepalive must not commit the
+			// response or prevent a safe retry.
+			_, _ = io.WriteString(w, "event: keepalive\ndata: {\"type\":\"keepalive\",\"attempt\":1}\n\n")
+			_, _ = io.WriteString(w, "event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"server_is_overloaded\",\"message\":\"overloaded-attempt-1\"}}}\n\n")
+			return
+		}
+		_, _ = io.WriteString(w, "event: response.keepalive\ndata: {\"type\":\"response.keepalive\",\"attempt\":2}\n\n")
+		_, _ = io.WriteString(w, "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"ok-after-keepalive\"}\n\n")
+		_, _ = io.WriteString(w, "event: response.completed\ndata: {\"type\":\"response.completed\"}\n\n")
+	}))
+	defer upstream.Close()
+	server := testProxy(t, upstream, 1)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/v1/responses")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if attempts.Load() != 2 || resp.StatusCode != http.StatusOK {
+		t.Fatalf("attempts=%d status=%d body=%q", attempts.Load(), resp.StatusCode, body)
+	}
+	text := string(body)
+	if strings.Contains(text, "overloaded-attempt-1") || strings.Contains(text, "\"attempt\":1") || strings.Contains(text, "response.failed") {
+		t.Fatalf("failed attempt leaked into response: %q", text)
+	}
+	if !strings.Contains(text, "ok-after-keepalive") || !strings.Contains(text, "\"attempt\":2") {
+		t.Fatalf("successful attempt missing from response: %q", text)
+	}
+}
+
+func TestSSEHeartbeatEventsDoNotCommitOutput(t *testing.T) {
+	for _, event := range []string{"keepalive", "response.keepalive", "ping", "response.ping", "heartbeat", "response.heartbeat"} {
+		if sseEventCommitsOutput(event) {
+			t.Errorf("event %q should not commit output", event)
+		}
+	}
+	if !sseEventCommitsOutput("response.output_text.delta") {
+		t.Error("output event should commit output")
+	}
+}
+
 func TestSSEDiagnosticsReportErrorEvent(t *testing.T) {
 	logs := captureProxyLogs(t)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

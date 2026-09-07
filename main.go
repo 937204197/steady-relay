@@ -619,6 +619,15 @@ func sseFrameType(frame []byte) string {
 }
 
 func sseEventCommitsOutput(event string) bool {
+	// Heartbeat/keepalive events indicate that the upstream connection is
+	// still alive, but do not contain model output. Keep them buffered so a
+	// subsequent pre-output response.failed/error can be retried safely. The
+	// upstream has used both a bare "keepalive" event and namespaced variants
+	// over time; accept the common ping/heartbeat spellings as well.
+	switch strings.ToLower(strings.TrimSpace(event)) {
+	case "keepalive", "response.keepalive", "ping", "response.ping", "heartbeat", "response.heartbeat":
+		return false
+	}
 	// These are response lifecycle/metadata events. Keep them buffered until
 	// actual output appears, so a later pre-output response.failed/error can be
 	// retried without exposing a partial failed response to the client.

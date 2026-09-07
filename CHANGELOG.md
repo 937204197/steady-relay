@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.2
+
+- Fixed retries for upstream SSE streams that send `keepalive`, `ping`, or
+  `heartbeat` events before a pre-output `response.failed` capacity error.
+  Heartbeat frames remain buffered and are not mistaken for committed model
+  output.
+
 ## 2.1.1
 
 - Documented the model-capacity and temporary upstream failure use case, including
