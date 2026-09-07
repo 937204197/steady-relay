@@ -138,7 +138,7 @@ Python 备用实现不支持 `UPSTREAM_IP`；它使用系统 DNS。其 `RETRY_BA
 ## 构建发布包
 
 ```bash
-./scripts/build-release.sh 2.1.0
+./scripts/build-release.sh 2.1.4
 ```
 
 产物会写入 `dist/`。发布时请在 GitHub Release 中上传六个平台压缩包与

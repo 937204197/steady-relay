@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.4
+
+- Retry pre-output capacity failures even when the upstream first announces an
+  empty output item or content part in the SSE stream.
+- Added regression coverage to ensure those structural announcements and the
+  failed attempt are not leaked into the retried response.
+
 ## 2.1.2
 
 - Fixed retries for upstream SSE streams that send `keepalive`, `ping`, or
