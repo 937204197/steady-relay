@@ -39,6 +39,24 @@ Steady Relay 放在客户端和模型平台之间，先接收客户端请求，�
 下载 GitHub Releases 中与你系统匹配的压缩包并完整解压。发布包是独立程序，不需要
 Python 或 Go。
 
+### 下载 v2.1.4
+
+请按操作系统和处理器架构选择安装包。链接文字使用易于理解的系统名称，括号中的架构
+用于确认与你的电脑匹配：
+
+| 系统与芯片 | 下载 |
+| --- | --- |
+| macOS（Intel 芯片，x86_64） | [下载 macOS Intel 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-darwin-amd64.tar.gz) |
+| macOS（Apple 芯片，ARM64；M1/M2/M3 等） | [下载 macOS Apple 芯片版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-darwin-arm64.tar.gz) |
+| Windows（Intel/AMD 64 位，x64） | [下载 Windows x64 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-windows-amd64.zip) |
+| Windows（ARM64） | [下载 Windows ARM64 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-windows-arm64.zip) |
+| Linux（Intel/AMD 64 位，x86_64） | [下载 Linux x86_64 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-linux-amd64.tar.gz) |
+| Linux（ARM64，aarch64） | [下载 Linux ARM64 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-linux-arm64.tar.gz) |
+
+也可以下载 [SHA256 校验文件](https://github.com/937204197/steady-relay/releases/download/v2.1.4/SHA256SUMS)，
+验证安装包完整性。所有平台的完整文件列表和历史版本见
+[GitHub Releases](https://github.com/937204197/steady-relay/releases)。
+
 先配置你自己的上游地址。地址通常应包含 `/v1`。
 
 Windows 命令提示符：
