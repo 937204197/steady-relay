@@ -545,7 +545,7 @@ func (p *proxy) forwardStream(w http.ResponseWriter, resp *http.Response, attemp
 					return err
 				}
 			}
-			if sseEventCommitsOutput(eventType) {
+			if sseFrameCommitsOutput(frame) {
 				diagnostics.commitEvent = eventType
 				if err := commit(); err != nil {
 					return err
@@ -631,13 +631,24 @@ func sseEventCommitsOutput(event string) bool {
 	// These are response lifecycle/metadata events. Keep them buffered until
 	// actual output appears, so a later pre-output response.failed/error can be
 	// retried without exposing a partial failed response to the client.
-	if event == "response.created" || event == "response.queued" || event == "response.in_progress" || event == "response.metadata" {
+	if event == "response.created" || event == "response.queued" || event == "response.in_progress" || event == "response.metadata" || event == "response.output_item.added" || event == "response.content_part.added" {
 		return false
 	}
 	if event == "" { // Unknown/data-only frames are committed conservatively.
 		return true
 	}
 	return event != "response.failed" && event != "error"
+}
+
+// sseFrameCommitsOutput distinguishes structural SSE events from events that
+// carry actual model output. In particular, Responses API sends
+// response.output_item.added (and often response.content_part.added) before
+// any text or tool-call arguments. Treating those announcements as output
+// prevents a safe retry when the upstream then reports a capacity failure in
+// the same stream. The announcements remain buffered and are discarded if a
+// pre-output retry occurs.
+func sseFrameCommitsOutput(frame []byte) bool {
+	return sseEventCommitsOutput(sseFrameType(frame))
 }
 
 func (d *streamDiagnostics) observe(chunk []byte) {

@@ -738,8 +738,48 @@ func TestSSEKeepaliveBeforeCapacityFailureRetries(t *testing.T) {
 	}
 }
 
+func TestSSEOutputItemAnnouncementBeforeCapacityFailureRetries(t *testing.T) {
+	var attempts atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		if attempts.Add(1) == 1 {
+			// The upstream announces an output item before it knows that the
+			// selected model is overloaded. This announcement carries no text or
+			// tool arguments and must not commit the response.
+			_, _ = io.WriteString(w, "event: response.created\ndata: {\"type\":\"response.created\"}\n\n")
+			_, _ = io.WriteString(w, "event: response.in_progress\ndata: {\"type\":\"response.in_progress\"}\n\n")
+			_, _ = io.WriteString(w, "event: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"item\":{\"type\":\"message\",\"content\":[]}}\n\n")
+			_, _ = io.WriteString(w, "event: response.content_part.added\ndata: {\"type\":\"response.content_part.added\",\"part\":{\"type\":\"output_text\",\"text\":\"\"}}\n\n")
+			_, _ = io.WriteString(w, "event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"server_is_overloaded\",\"message\":\"overloaded\"}}}\n\n")
+			return
+		}
+		_, _ = io.WriteString(w, "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"ok-after-item-announcement\"}\n\n")
+		_, _ = io.WriteString(w, "event: response.completed\ndata: {\"type\":\"response.completed\"}\n\n")
+	}))
+	defer upstream.Close()
+	server := testProxy(t, upstream, 1)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/v1/responses")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	text := string(body)
+	if attempts.Load() != 2 || resp.StatusCode != http.StatusOK {
+		t.Fatalf("attempts=%d status=%d body=%q", attempts.Load(), resp.StatusCode, text)
+	}
+	if strings.Contains(text, "overloaded") || strings.Contains(text, "output_item.added") || strings.Contains(text, "content_part.added") {
+		t.Fatalf("failed attempt leaked into response: %q", text)
+	}
+	if !strings.Contains(text, "ok-after-item-announcement") {
+		t.Fatalf("successful attempt missing from response: %q", text)
+	}
+}
+
 func TestSSEHeartbeatEventsDoNotCommitOutput(t *testing.T) {
-	for _, event := range []string{"keepalive", "response.keepalive", "ping", "response.ping", "heartbeat", "response.heartbeat"} {
+	for _, event := range []string{"keepalive", "response.keepalive", "ping", "response.ping", "heartbeat", "response.heartbeat", "response.output_item.added", "response.content_part.added"} {
 		if sseEventCommitsOutput(event) {
 			t.Errorf("event %q should not commit output", event)
 		}
