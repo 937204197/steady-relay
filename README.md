@@ -63,7 +63,7 @@ Windows 命令提示符：
 
 ```bat
 set UPSTREAM_BASE_URL=https://api.example.com/v1
-start.bat
+./start.bat
 ```
 
 macOS / Linux：
