@@ -778,6 +778,73 @@ func TestSSEOutputItemAnnouncementBeforeCapacityFailureRetries(t *testing.T) {
 	}
 }
 
+func TestSSEBufferUntilSuccessRetriesAfterLateCapacityFailure(t *testing.T) {
+	var attempts atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempt := attempts.Add(1)
+		w.Header().Set("Content-Type", "text/event-stream")
+		if attempt == 1 {
+			// The first attempt has already produced a text delta, but fails before
+			// completion. Buffer mode must discard both frames and retry.
+			_, _ = io.WriteString(w, "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"discard-me\"}\n\n")
+			_, _ = io.WriteString(w, "event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"server_is_overloaded\",\"message\":\"overloaded\"}}}\n\n")
+			return
+		}
+		_, _ = io.WriteString(w, "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"keep-me\"}\n\n")
+		_, _ = io.WriteString(w, "event: response.completed\ndata: {\"type\":\"response.completed\"}\n\n")
+	}))
+	defer upstream.Close()
+	u, err := url.Parse(upstream.URL + "/v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(&proxy{
+		cfg:    config{upstream: u, maxRetries: 1, backoff: 0, maxRetryWait: time.Second, bufferUntilSuccess: true},
+		client: upstream.Client(),
+	})
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/v1/responses")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	text := string(body)
+	if attempts.Load() != 2 || resp.StatusCode != http.StatusOK || strings.Contains(text, "discard-me") || strings.Contains(text, "overloaded") || !strings.Contains(text, "keep-me") || !strings.Contains(text, "response.completed") {
+		t.Fatalf("attempts=%d status=%d body=%q", attempts.Load(), resp.StatusCode, text)
+	}
+}
+
+func TestSSEBufferUntilSuccessDoesNotReleasePartialOutputOnFinalFailure(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}\n\n")
+		_, _ = io.WriteString(w, "event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"server_is_overloaded\",\"message\":\"final failure\"}}}\n\n")
+	}))
+	defer upstream.Close()
+	u, err := url.Parse(upstream.URL + "/v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(&proxy{
+		cfg:    config{upstream: u, maxRetries: 0, backoff: 0, maxRetryWait: time.Second, bufferUntilSuccess: true},
+		client: upstream.Client(),
+	})
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/v1/responses")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	text := string(body)
+	if resp.StatusCode != http.StatusOK || strings.Contains(text, "partial") || !strings.Contains(text, "final failure") || !strings.Contains(text, "response.failed") {
+		t.Fatalf("status=%d body=%q", resp.StatusCode, text)
+	}
+}
+
 func TestSSEHeartbeatEventsDoNotCommitOutput(t *testing.T) {
 	for _, event := range []string{"keepalive", "response.keepalive", "ping", "response.ping", "heartbeat", "response.heartbeat", "response.output_item.added", "response.content_part.added"} {
 		if sseEventCommitsOutput(event) {

@@ -42,6 +42,9 @@ type config struct {
 	backoff      time.Duration
 	requestLimit time.Duration
 	maxRetryWait time.Duration
+	// bufferUntilSuccess keeps an SSE response private from the client until
+	// response.completed is received, allowing safe retries after late failures.
+	bufferUntilSuccess bool
 }
 
 type proxy struct {
@@ -50,6 +53,10 @@ type proxy struct {
 }
 
 var requestSequence atomic.Uint64
+
+const maxBufferedStreamBytes int64 = 64 * 1024 * 1024
+
+var errSSEBufferLimit = errors.New("upstream SSE response exceeded the 64 MiB buffering limit")
 
 type streamDiagnostics struct {
 	bytes        int64
@@ -101,6 +108,7 @@ func main() {
 	} else {
 		log.Printf("[startup] upstream_host=%s pinned_ip=none dns_bypass=disabled", cfg.upstream.Hostname())
 	}
+	log.Printf("[startup] buffer_until_success=%t max_buffer=%dMiB", cfg.bufferUntilSuccess, maxBufferedStreamBytes/(1024*1024))
 	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
@@ -210,6 +218,10 @@ func loadConfig() (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	bufferUntilSuccess, err := envBool("BUFFER_UNTIL_SUCCESS", false)
+	if err != nil {
+		return config{}, err
+	}
 
 	upstreamValue := flag.String("upstream", upstreamDefault, "required upstream OpenAI-compatible base URL")
 	upstreamIPValue := flag.String("upstream-ip", os.Getenv("UPSTREAM_IP"), "optional fixed IP for the upstream host; omit to use system DNS")
@@ -218,6 +230,7 @@ func loadConfig() (config, error) {
 	backoff := flag.Duration("retry-backoff", backoffDefault, "initial exponential retry backoff")
 	timeout := flag.Duration("request-timeout", timeoutDefault, "limit for connecting and receiving upstream response headers")
 	maxRetryWait := flag.Duration("max-retry-after", maxRetryDefault, "maximum Retry-After/backoff delay")
+	bufferMode := flag.Bool("buffer-until-success", bufferUntilSuccess, "buffer SSE responses until response.completed before sending them to the client")
 	flag.Parse()
 
 	if *maxRetries < 0 || *backoff < 0 || *timeout <= 0 || *maxRetryWait < 0 {
@@ -245,13 +258,14 @@ func loadConfig() (config, error) {
 	}
 
 	return config{
-		upstream:     upstream,
-		upstreamIP:   upstreamIP,
-		listen:       *listenValue,
-		maxRetries:   *maxRetries,
-		backoff:      *backoff,
-		requestLimit: *timeout,
-		maxRetryWait: *maxRetryWait,
+		upstream:           upstream,
+		upstreamIP:         upstreamIP,
+		listen:             *listenValue,
+		maxRetries:         *maxRetries,
+		backoff:            *backoff,
+		requestLimit:       *timeout,
+		maxRetryWait:       *maxRetryWait,
+		bufferUntilSuccess: *bufferMode,
 	}, nil
 }
 
@@ -325,7 +339,7 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		if isEventStream(resp.Header.Get("Content-Type")) && r.Method != http.MethodHead {
 			upstreamID := upstreamRequestID(resp.Header)
-			diagnostics, started, streamErr := p.forwardStream(w, resp, attemptStarted, attempt < p.cfg.maxRetries)
+			diagnostics, started, streamErr := p.forwardStream(w, resp, attemptStarted, attempt < p.cfg.maxRetries, p.cfg.bufferUntilSuccess)
 			if streamErr == nil {
 				log.Printf("[response] id=%s method=%s path=%s model=%q status=%d attempts=%d duration=%s first_byte=%s stream=complete committed=%t commit_event=%q bytes=%d events=%d terminal=%q upstream_request_id=%q%s", requestID, r.Method, logPath, requestedModel, resp.StatusCode, attempt+1, time.Since(startedAt).Round(time.Millisecond), diagnostics.firstByte.Round(time.Millisecond), diagnostics.committed, diagnostics.commitEvent, diagnostics.bytes, diagnostics.events, diagnostics.terminal, upstreamID, diagnostics.errorLogFields())
 				return
@@ -495,7 +509,7 @@ func (p *proxy) forwardBuffered(w http.ResponseWriter, method string, resp *http
 	return nil
 }
 
-func (p *proxy) forwardStream(w http.ResponseWriter, resp *http.Response, attemptStarted time.Time, canRetry bool) (diagnostics streamDiagnostics, started bool, err error) {
+func (p *proxy) forwardStream(w http.ResponseWriter, resp *http.Response, attemptStarted time.Time, canRetry bool, bufferUntilSuccess bool) (diagnostics streamDiagnostics, started bool, err error) {
 	defer resp.Body.Close()
 	buf := make([]byte, 64*1024)
 	frameBuffer := make([]byte, 0, 64*1024)
@@ -517,6 +531,9 @@ func (p *proxy) forwardStream(w http.ResponseWriter, resp *http.Response, attemp
 	}
 	consume := func(chunk []byte) error {
 		frameBuffer = append(frameBuffer, chunk...)
+		if bufferUntilSuccess && int64(len(frameBuffer)) > maxBufferedStreamBytes {
+			return errSSEBufferLimit
+		}
 		for {
 			end, sep := sseFrameEnd(frameBuffer)
 			if end < 0 {
@@ -532,6 +549,9 @@ func (p *proxy) forwardStream(w http.ResponseWriter, resp *http.Response, attemp
 				flush(w)
 			} else {
 				diagnostics.pending = append(diagnostics.pending, frame...)
+				if bufferUntilSuccess && int64(len(diagnostics.pending)) > maxBufferedStreamBytes {
+					return errSSEBufferLimit
+				}
 			}
 			eventType := sseFrameType(frame)
 			if (eventType == "response.failed" || eventType == "error") && !diagnostics.committed {
@@ -539,13 +559,20 @@ func (p *proxy) forwardStream(w http.ResponseWriter, resp *http.Response, attemp
 					return errSSEPreCommitFailure
 				}
 				// No retry remains. Forward the final upstream failure event exactly
-				// as received so the client can show the real error to the user.
+				// as received so the client can show the real error to the user. In
+				// buffer mode, do not release partial output from this failed attempt.
+				if bufferUntilSuccess {
+					diagnostics.pending = append(diagnostics.pending[:0], frame...)
+				}
 				diagnostics.commitEvent = eventType
 				if err := commit(); err != nil {
 					return err
 				}
 			}
-			if sseFrameCommitsOutput(frame) {
+			// In the opt-in mode, every frame remains buffered until the upstream
+			// explicitly reports a successful terminal event. A late
+			// response.failed can therefore discard the entire attempt safely.
+			if (!bufferUntilSuccess && sseFrameCommitsOutput(frame)) || (bufferUntilSuccess && eventType == "response.completed") {
 				diagnostics.commitEvent = eventType
 				if err := commit(); err != nil {
 					return err
@@ -572,7 +599,10 @@ func (p *proxy) forwardStream(w http.ResponseWriter, resp *http.Response, attemp
 				}
 				diagnostics.finish()
 				if !diagnostics.committed {
-					if canRetry && (diagnostics.terminal == "response.failed" || diagnostics.terminal == "error") {
+					if bufferUntilSuccess && diagnostics.terminal != "response.completed" {
+						return diagnostics, false, errSSEPreCommitFailure
+					}
+					if canRetry && (bufferUntilSuccess || diagnostics.terminal == "response.failed" || diagnostics.terminal == "error") {
 						return diagnostics, false, errSSEPreCommitFailure
 					}
 					diagnostics.commitEvent = diagnostics.terminal
@@ -923,6 +953,18 @@ func envInt(name string, fallback int) (int, error) {
 	parsed, err := strconv.Atoi(value)
 	if err != nil {
 		return 0, fmt.Errorf("invalid %s=%q: %w", name, value, err)
+	}
+	return parsed, nil
+}
+
+func envBool(name string, fallback bool) (bool, error) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("invalid %s=%q: use true or false", name, value)
 	}
 	return parsed, nil
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0
+
+- Added the opt-in `--buffer-until-success` / `BUFFER_UNTIL_SUCCESS=true` mode.
+  SSE output is held until `response.completed`, so late capacity failures can
+  be retried without leaking partial text or tool calls to Codex.
+- Added a 64 MiB per-attempt buffer limit and standalone-package documentation.
+
 ## 2.1.4
 
 - Retry pre-output capacity failures even when the upstream first announces an

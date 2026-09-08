@@ -35,8 +35,10 @@ Steady Relay 放在客户端和模型平台之间，先接收客户端请求，�
 
 该模式默认关闭，因为它会增加首字节等待时间和内存占用。为避免异常响应无限占用内存，
 单次尝试的缓存上限为 64 MiB；超过上限会丢弃本次尝试并重试。重试耗尽后仍未收到
-`response.completed` 时，代理不会放行不完整输出，而是返回上游不可用错误。该模式仅
-适用于 Go 独立程序；Python 备用实现不支持此选项。
+`response.completed` 时，代理不会放行不完整输出；如果最终收到的是
+`response.failed`/`error`，只会放行最后的错误事件，不会放行此前的半截输出；如果连接
+中断或超过缓存上限，则返回上游不可用错误。该模式仅适用于 Go 独立程序；Python 备用
+实现不支持此选项。
 
 ## 安全边界与兼容性
 
@@ -54,21 +56,21 @@ Steady Relay 放在客户端和模型平台之间，先接收客户端请求，�
 下载与你电脑匹配的压缩包，并**完整解压**到一个普通文件夹；不要直接在 ZIP 压缩包
 预览窗口里运行程序。
 
-### 下载 v2.1.4
+### 下载 v2.2.0
 
 请按操作系统和处理器架构选择安装包。链接文字使用易于理解的系统名称，括号中的架构
 用于确认与你的电脑匹配：
 
 | 系统与芯片 | 下载 |
 | --- | --- |
-| macOS（Intel 芯片，x86_64） | [下载 macOS Intel 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-darwin-amd64.tar.gz) |
-| macOS（Apple 芯片，ARM64；M1/M2/M3 等） | [下载 macOS Apple 芯片版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-darwin-arm64.tar.gz) |
-| Windows（Intel/AMD 64 位，x64） | [下载 Windows x64 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-windows-amd64.zip) |
-| Windows（ARM64） | [下载 Windows ARM64 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-windows-arm64.zip) |
-| Linux（Intel/AMD 64 位，x86_64） | [下载 Linux x86_64 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-linux-amd64.tar.gz) |
-| Linux（ARM64，aarch64） | [下载 Linux ARM64 版](https://github.com/937204197/steady-relay/releases/download/v2.1.4/steady-relay-2.1.4-linux-arm64.tar.gz) |
+| macOS（Intel 芯片，x86_64） | [下载 macOS Intel 版](https://github.com/937204197/steady-relay/releases/download/v2.2.0/steady-relay-2.2.0-darwin-amd64.tar.gz) |
+| macOS（Apple 芯片，ARM64；M1/M2/M3 等） | [下载 macOS Apple 芯片版](https://github.com/937204197/steady-relay/releases/download/v2.2.0/steady-relay-2.2.0-darwin-arm64.tar.gz) |
+| Windows（Intel/AMD 64 位，x64） | [下载 Windows x64 版](https://github.com/937204197/steady-relay/releases/download/v2.2.0/steady-relay-2.2.0-windows-amd64.zip) |
+| Windows（ARM64） | [下载 Windows ARM64 版](https://github.com/937204197/steady-relay/releases/download/v2.2.0/steady-relay-2.2.0-windows-arm64.zip) |
+| Linux（Intel/AMD 64 位，x86_64） | [下载 Linux x86_64 版](https://github.com/937204197/steady-relay/releases/download/v2.2.0/steady-relay-2.2.0-linux-amd64.tar.gz) |
+| Linux（ARM64，aarch64） | [下载 Linux ARM64 版](https://github.com/937204197/steady-relay/releases/download/v2.2.0/steady-relay-2.2.0-linux-arm64.tar.gz) |
 
-也可以下载 [SHA256 校验文件](https://github.com/937204197/steady-relay/releases/download/v2.1.4/SHA256SUMS)，
+也可以下载 [SHA256 校验文件](https://github.com/937204197/steady-relay/releases/download/v2.2.0/SHA256SUMS)，
 验证安装包完整性。所有平台的完整文件列表和历史版本见
 [GitHub Releases](https://github.com/937204197/steady-relay/releases)。
 
@@ -251,7 +253,7 @@ Python 备用实现不支持 `UPSTREAM_IP`；它使用系统 DNS。其 `RETRY_BA
 ## 构建发布包
 
 ```bash
-./scripts/build-release.sh 2.1.4
+./scripts/build-release.sh 2.2.0
 ```
 
 产物会写入 `dist/`。发布时请在 GitHub Release 中上传六个平台压缩包与

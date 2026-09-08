@@ -26,6 +26,26 @@ initial request (11 attempts total), with exponential backoff. If output has
 already started, the request is not replayed, preventing duplicate text or
 tool calls.
 
+Optional enhanced buffering mode
+---------------------------------
+
+If the upstream sometimes sends output before reporting
+server_is_overloaded, start the Go program with:
+  ./start.sh --upstream https://api.example.com/v1 --buffer-until-success
+On Windows, use:
+  start.bat --buffer-until-success
+or set BUFFER_UNTIL_SUCCESS=true before starting. In this opt-in mode, SSE
+frames stay in local memory and are sent to Codex only after
+response.completed. A response.failed event, connection failure, or incomplete
+stream discards that attempt and retries it, preventing partial text or tool
+calls from leaking to Codex. The default is off because it delays the first
+visible output. Each attempt is capped at 64 MiB; if retries are exhausted
+without response.completed, the proxy does not release partial output. A final
+response.failed/error event is forwarded without the earlier partial frames;
+connection failures and buffer-limit failures return an upstream-unavailable
+error. This option is supported by the Go standalone program, not the Python
+fallback.
+
 Quick start
 -----------
 
@@ -110,10 +130,12 @@ Command-line flags take precedence over environment variables:
   --retry-backoff TIME    base exponential backoff, for example 500ms
   --request-timeout TIME  upstream response-header timeout, for example 120s
   --max-retry-after TIME  maximum accepted Retry-After delay (default 60s)
+  --buffer-until-success  hold SSE output until response.completed (default off)
 
 Supported environment variables:
   UPSTREAM_BASE_URL, UPSTREAM_IP, LISTEN_ADDR, LISTEN_HOST, LISTEN_PORT,
   MAX_RETRIES, RETRY_BACKOFF, REQUEST_TIMEOUT, MAX_RETRY_AFTER
+  BUFFER_UNTIL_SUCCESS
 
 The default is 10 retries after the initial attempt (11 attempts total). All
 429 responses, including usage_limit_reached, are retried with Retry-After or
