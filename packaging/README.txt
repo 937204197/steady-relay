@@ -29,12 +29,36 @@ tool calls.
 Quick start
 -----------
 
-Windows Command Prompt:
+The archive is standalone: Python, Go, and developer tools are not required.
+Extract the whole archive to a normal folder before starting. Do not run files
+from inside the ZIP preview window.
+
+Windows (easiest method):
+  1. Open the extracted folder and double-click start.bat.
+  2. Paste your trusted upstream API Base URL when the window asks for it.
+  3. Keep the black window open while using Codex.
+
+For an older package that does not ask for the URL, click the folder address
+bar, type cmd, press Enter, then run:
   set UPSTREAM_BASE_URL=https://api.example.com/v1
   start.bat
 
-macOS / Linux:
-  UPSTREAM_BASE_URL=https://api.example.com/v1 ./start.sh
+If SmartScreen appears, verify the archive SHA-256 first, then choose
+More info -> Run anyway. Do not disable Defender or SmartScreen.
+
+macOS (easiest method):
+  1. Control-click install-macos.command and choose Open.
+  2. Confirm Open in the macOS warning dialog.
+  3. Paste your trusted upstream API Base URL when prompted.
+  4. Keep the terminal window open while using Codex.
+
+Linux:
+  1. Open a terminal in the extracted folder (usually right-click -> Open in Terminal).
+  2. Run:
+       ./start.sh --upstream https://api.example.com/v1
+
+The upstream URL usually ends in /v1. Your API key remains in Codex; do not
+paste it into this guide or into a public script.
 
 macOS first run:
   After verifying the archive, Control-click install-macos.command and choose

@@ -34,10 +34,11 @@ Steady Relay 放在客户端和模型平台之间，先接收客户端请求，�
   重复工具调用。实际输出前的临时失败可以安全重试。
 - 固定 IP 是可选功能；HTTPS 仍使用原域名完成 Host、SNI 和证书校验。
 
-## 快速开始
+## 快速开始（普通用户无需开发环境）
 
-下载 GitHub Releases 中与你系统匹配的压缩包并完整解压。发布包是独立程序，不需要
-Python 或 Go。
+发布包是独立程序，不需要安装 Python、Go 或其他开发工具。请先从上面的 Release
+下载与你电脑匹配的压缩包，并**完整解压**到一个普通文件夹；不要直接在 ZIP 压缩包
+预览窗口里运行程序。
 
 ### 下载 v2.1.4
 
@@ -57,7 +58,65 @@ Python 或 Go。
 验证安装包完整性。所有平台的完整文件列表和历史版本见
 [GitHub Releases](https://github.com/937204197/steady-relay/releases)。
 
-先配置你自己的上游地址。地址通常应包含 `/v1`。
+### 最简单的启动方式
+
+你需要准备一个自己信任、且有权使用的 OpenAI 兼容模型 API 地址，通常以 `/v1` 结尾，
+例如 `https://api.example.com/v1`。API Key 仍由 Codex 保存并发送，Steady Relay 不会
+要求你把 API Key 写进脚本。
+
+#### Windows
+
+1. 打开解压后的文件夹，确认能看到 `start.bat` 和 `steady-relay.exe`。
+2. 双击 `start.bat`。如果没有预先配置上游地址，程序会在窗口中提示你输入；粘贴地址
+   后按回车即可。
+   如果你下载的是较早的安装包、窗口没有输入提示：点击文件夹顶部的地址栏，输入
+   `cmd` 并按回车，然后依次粘贴下面两行；这样不需要自己执行 `cd`：
+
+   ```bat
+   set UPSTREAM_BASE_URL=https://api.example.com/v1
+   start.bat
+   ```
+
+3. 如果 Windows SmartScreen 弹出提示，先确认文件来自本项目的 GitHub Release，再点
+   “更多信息”→“仍要运行”。
+4. 保持这个黑色窗口打开，Codex 使用期间不要关闭它。按窗口提示的本地地址配置 Codex。
+
+#### macOS
+
+1. 打开解压后的文件夹，确认能看到 `install-macos.command` 和 `steady-relay`。
+2. 按住 Control 键点击 `install-macos.command`，选择“打开”，再在确认窗口中点击“打开”。
+   首次运行时这是 macOS 对未签名程序的正常提示。
+3. 在终端提示处粘贴你的上游 API 地址（通常以 `/v1` 结尾）并按回车。
+4. 保持打开的终端窗口，不要关闭它。
+
+如果 macOS 没有显示“打开”选项，请先右键文件选择“打开”；仍无法启动时，打开“系统设置
+→ 隐私与安全性”，在底部点击“仍要打开”，然后重新执行第 2 步。
+
+#### Linux
+
+1. 完整解压压缩包。
+2. 在文件管理器中打开这个文件夹，右键空白处选择“在终端中打开”（不同发行版名称可能略有不同）。
+3. 在打开的终端中粘贴下面一行并按回车：
+
+   ```bash
+   ./start.sh --upstream https://api.example.com/v1
+   ```
+
+如果提示没有执行权限，先运行 `chmod +x start.sh steady-relay`，再重复上一步。
+
+### 配置 Codex
+
+启动成功后，终端会打印实际端口。把 Codex 的 API Base URL 设置为：
+
+```text
+http://127.0.0.1:8080/v1
+```
+
+如果 8080 已被占用，程序会自动尝试 8081、8082 等后续端口；此时必须使用启动日志显示的
+实际端口，例如 `http://127.0.0.1:8081/v1`。地址末尾的 `/v1` 不能省略，否则 Codex
+发送 `/responses` 时会收到 404。
+
+### 命令行启动（熟悉终端的用户）
 
 Windows 命令提示符：
 
@@ -77,15 +136,6 @@ UPSTREAM_BASE_URL=https://api.example.com/v1 ./start.sh
 ```bash
 ./start.sh --upstream https://api.example.com/v1
 ```
-
-启动成功后，终端会打印实际端口。将客户端的 API Base URL 设置为：
-
-```text
-http://127.0.0.1:8080/v1
-```
-
-如果 8080 已被占用，程序会使用 8081、8082 等后续端口；请以启动日志为准。代理
-仅接受 `/v1` 或 `/v1/*` 路径：Base URL 漏写 `/v1` 会导致 `/responses` 被拒绝为 404。
 
 健康检查：
 
