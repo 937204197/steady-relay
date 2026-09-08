@@ -120,6 +120,38 @@ Steady Relay 放在客户端和模型平台之间，先接收客户端请求，�
 
 如果提示没有执行权限，先运行 `chmod +x start.sh steady-relay`，再重复上一步。
 
+## Codex 安装向导 Skill（可选）
+
+仓库还提供了一个面向普通用户的 `steady-relay-setup` Skill。安装后，你可以把本仓库的
+GitHub 地址发给 Codex，让它按步骤完成版本选择、下载、SHA-256 校验、解压、生成启动命令
+和健康检查，不需要自己理解 `cd` 或手工拼下载链接。
+
+### 安装 Skill
+
+可以直接让 Codex 使用内置的 Skill 安装能力执行下面的请求：
+
+```text
+请安装这个仓库中的 Codex Skill：
+https://github.com/937204197/steady-relay/tree/main/skills/steady-relay-setup
+```
+
+安装完成后，如果 Skill 没有立即出现在列表中，请重新打开 Codex。也可以在当前仓库中让
+Codex 读取 `skills/steady-relay-setup/SKILL.md` 后再使用。
+
+### 使用 Skill 安装和启动
+
+```text
+请使用 $steady-relay-setup，帮我从这个地址安装并启动 Steady Relay：
+https://github.com/937204197/steady-relay
+```
+
+向导会先识别系统和芯片，展示要下载的 Release 文件和目标目录，得到确认后再下载并校验。
+随后它会询问你信任的上游 API Base URL，检查本地 `/healthz`，并给出 CC Switch 的配置步骤。
+它不会索取或记录 API Key，也不会默认修改 CC Switch 数据库或 Codex 配置文件。
+
+使用期间必须保持 Steady Relay 的终端窗口或进程运行；不用时先停止中转，再把 Codex/CC Switch
+的 API 请求地址改回原来的远程地址，否则 Codex 下一次请求仍会指向已经关闭的本地地址。
+
 ### 配置 Codex
 
 启动成功后，终端会打印实际端口。把 Codex 的 API Base URL 设置为：

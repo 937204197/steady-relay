@@ -1,0 +1,7 @@
+interface:
+  display_name: "Steady Relay 安装向导"
+  short_description: "下载、校验并配置本地 Steady Relay"
+  default_prompt: "使用 $steady-relay-setup，帮我从官方 GitHub Release 下载并启动 Steady Relay，然后一步步配置 Codex。"
+
+policy:
+  allow_implicit_invocation: true
