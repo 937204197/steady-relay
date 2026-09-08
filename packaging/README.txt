@@ -78,6 +78,23 @@ port and prints the selected address. Use that actual port in the client.
 The /v1 suffix is required: omitting it causes /responses requests to be
 rejected with HTTP 404.
 
+CC Switch example (graphical configuration):
+  1. Start Steady Relay, enter the real third-party upstream URL when prompted,
+     and note the local API URL printed in its log. The default is
+     http://127.0.0.1:8080/v1; use the actual port if it changed.
+  2. In CC Switch, open the provider used by Codex and edit the provider.
+  3. In the field labelled “API request address” (the red-boxed field in the
+     example screenshot), enter the local URL from step 1, keep the /v1 suffix,
+     then click Apply or Save.
+  4. Fully quit and restart Codex. Keep the Steady Relay window open while
+     using Codex.
+
+  This field must contain the local Steady Relay URL, not the remote upstream
+  URL; entering the remote URL here bypasses the retry proxy. Configure the
+  remote upstream when starting Steady Relay with UPSTREAM_BASE_URL. A
+  “[request] ... forwarding” log line confirms that a request entered the
+  proxy. Keep the API key in CC Switch/Codex and never put it in a public script.
+
 Keep the terminal window open while using the proxy. Press Ctrl+C to stop.
 Health check: http://127.0.0.1:8080/healthz, or the selected port in the log.
 

@@ -24,6 +24,20 @@ Steady Relay 放在客户端和模型平台之间，先接收客户端请求，�
 代理不会改写请求体或响应体。若上游已经向客户端发送了实际输出，代理不会重放该
 请求，以避免重复文本、重复工具调用或重复执行。
 
+### 可选增强模式：成功后再放行 SSE
+
+如果上游经常在已经发送 `response.output_text.delta` 或工具调用片段后，才返回
+`server_is_overloaded`，可以主动开启 `--buffer-until-success`（或设置
+`BUFFER_UNTIL_SUCCESS=true`）。开启后，代理会先在本地缓存本次 SSE 响应，不向 Codex
+发送任何内容；只有收到 `response.completed` 才一次性放行。若收到
+`response.failed`、连接中断或其他未完成终态，缓存会被丢弃并按重试策略重新请求，
+从而避免把失败尝试的半截文本或工具调用交给 Codex。
+
+该模式默认关闭，因为它会增加首字节等待时间和内存占用。为避免异常响应无限占用内存，
+单次尝试的缓存上限为 64 MiB；超过上限会丢弃本次尝试并重试。重试耗尽后仍未收到
+`response.completed` 时，代理不会放行不完整输出，而是返回上游不可用错误。该模式仅
+适用于 Go 独立程序；Python 备用实现不支持此选项。
+
 ## 安全边界与兼容性
 
 - 本项目不会提供或默认使用任何第三方上游。你必须自行设置 `UPSTREAM_BASE_URL`。
@@ -116,6 +130,23 @@ http://127.0.0.1:8080/v1
 实际端口，例如 `http://127.0.0.1:8081/v1`。地址末尾的 `/v1` 不能省略，否则 Codex
 发送 `/responses` 时会收到 404。
 
+#### 以 CC Switch 配置 Codex（图形界面示例）
+
+如果你使用 CC Switch 管理 Codex 的供应商，可以按下面步骤配置：
+
+1. 先启动 Steady Relay，并按提示输入真实的第三方上游 API 地址。记下终端日志中的本地
+   API 地址，默认是 `http://127.0.0.1:8080/v1`；如果端口被占用，请使用日志显示的实际端口。
+2. 打开 CC Switch，进入要给 Codex 使用的供应商编辑页面。
+3. 在截图中红框所示的“API 请求地址”一栏，填入上一步的本地地址，然后点击“应用”或“保存”。
+   地址末尾的 `/v1` 必须保留。
+4. 完全退出并重新启动 Codex，使新的地址生效；使用 Codex 期间请保持 Steady Relay 的窗口打开。
+
+这里的“API 请求地址”应填写 Steady Relay 的本地地址（对 CC Switch 来说，这是 Codex 要连接的
+上游地址），不要再次填写远程第三方 API 地址，否则请求会绕过中转，无法使用自动重试。远程第三方
+API 地址应在启动 Steady Relay 时作为 `UPSTREAM_BASE_URL` 输入。看到日志中的
+`[request] ... forwarding` 即表示请求已经进入中转。API Key 仍填写在 CC Switch/Codex
+自己的配置中，不要写进公开脚本。
+
 ### 命令行启动（熟悉终端的用户）
 
 Windows 命令提示符：
@@ -156,11 +187,25 @@ http://127.0.0.1:8080/healthz
 | `--retry-backoff TIME` | `RETRY_BACKOFF` | `500ms` | 指数退避基数 |
 | `--request-timeout TIME` | `REQUEST_TIMEOUT` | `120s` | 上游响应头等待上限 |
 | `--max-retry-after TIME` | `MAX_RETRY_AFTER` | `60s` | 上游 `Retry-After` 等待上限 |
+| `--buffer-until-success` | `BUFFER_UNTIL_SUCCESS` | `false` | 缓存 SSE，收到 `response.completed` 后才放行 |
 
 默认会在首次请求后最多重试 10 次，即最多 11 次上游请求。退避使用带抖动的指数
 等待，后续重试位于各自等待窗口的后半段，单次最多 60 秒。所有 `429`（包括
 `usage_limit_reached`）都可重试，方便上游在多账号或多渠道间切换；全部失败时，最后
 一次上游 HTTP 错误会原样转发给客户端。
+
+启用增强模式示例：
+
+```bash
+./start.sh --upstream https://api.example.com/v1 --buffer-until-success
+```
+
+或在 Windows 命令提示符中：
+
+```bat
+set BUFFER_UNTIL_SUCCESS=true
+start.bat
+```
 
 ### 可选：固定 IP 绕过异常 DNS
 
