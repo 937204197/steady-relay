@@ -151,6 +151,8 @@ API 地址应在启动 Steady Relay 时作为 `UPSTREAM_BASE_URL` 输入。看�
 
 ### 命令行启动（熟悉终端的用户）
 
+先cd到解压后的文件目录
+
 Windows 命令提示符：
 
 ```bat
