@@ -115,7 +115,11 @@ CC Switch example (graphical configuration):
   “[request] ... forwarding” log line confirms that a request entered the
   proxy. Keep the API key in CC Switch/Codex and never put it in a public script.
 
-Keep the terminal window open while using the proxy. Press Ctrl+C to stop.
+Keep the terminal window open while using the proxy. After startup, this same
+terminal continuously prints request, retry, and response logs. A line such as
+“[request] ... forwarding” means a Codex request entered the local proxy; a
+“[retry] ...” line means the proxy is retrying a temporary upstream failure.
+This is normal. Press Ctrl+C to stop.
 Health check: http://127.0.0.1:8080/healthz, or the selected port in the log.
 
 Configuration

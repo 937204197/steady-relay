@@ -48,8 +48,10 @@ https://github.com/937204197/steady-relay
 随后询问你信任的上游 API Base URL，检查本地 `/healthz`，再引导配置 Codex/CC Switch。
 它不会索取或记录 API Key，也不会默认修改 CC Switch 数据库或 Codex 配置文件。
 
-使用期间必须保持 Steady Relay 的终端窗口或进程运行；不用时先停止中转，再把 Codex/CC Switch
-的 API 请求地址改回原来的远程地址，否则 Codex 下一次请求仍会指向已经关闭的本地地址。
+使用期间必须保持 Steady Relay 的终端窗口或进程运行；启动成功后，这个终端会持续输出请求日志，
+例如 `[request] ... forwarding` 表示请求已进入中转，`[retry] ...` 表示正在重试。看到这些日志
+是正常现象，不要关闭窗口。不用时先停止中转，再把 Codex/CC Switch 的 API 请求地址改回原来的
+远程地址，否则 Codex 下一次请求仍会指向已经关闭的本地地址。
 
 ### 可选增强模式：成功后再放行 SSE
 
@@ -250,6 +252,10 @@ start.bat --upstream https://api.example.com/v1 --upstream-ip 203.0.113.10
 可能由该 HTTP 代理解析域名，固定 IP 不会生效；请遵守组织网络政策。
 
 ## 日志与故障排查
+
+启动成功后，Steady Relay 会在启动它的终端窗口中持续输出请求、重试和响应日志；不需要另开日志
+文件。看到 `[request] ... forwarding` 即表示 Codex 的请求已经进入本地中转，看到 `[retry]` 则
+表示上游临时失败，代理正在按退避策略重试。
 
 正常日志不包含 API Key、完整请求体或完整响应体；只记录路径、顶层 `model`、状态、
 重试、耗时和截断后的上游错误摘要。
